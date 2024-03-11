@@ -14,7 +14,7 @@
 // Command args
 // Info(0x00): no args
 // Read(0x01): address (addrByteSize)
-// Read Range(0x02): address start(inclucive)(addrByteSize), address end(exclucive)(addrByteSize)
+// Read Range(0x02): address start(inclucive)(addrByteSize), address end(inclusive)(addrByteSize)
 
 #include <Arduino.h>
 
@@ -22,7 +22,7 @@
 #define BUS_SIZE 16
 #define READ_DELAY 100
 
-#define MAX_RETRIES 10
+#define MAX_RETRIES 10 // maximum number of times a read can fail before read failed exit code is sent
 
 const uint8_t addrByteSize = ceil(ADDR_SIZE / 8.0);
 const uint8_t busByteSize = ceil(BUS_SIZE / 8.0);
@@ -193,7 +193,7 @@ void handleReadRange(){
   memcpy(&addrStart, args, addrByteSize);
   memcpy(&addrEnd, args + addrByteSize, addrByteSize);
 
-  size_t size = addrEnd - addrStart;
+  size_t size = addrEnd - addrStart + 1;
 
   if(size < 0){
     Serial.write(0x02); // invalid args
@@ -207,7 +207,7 @@ void handleReadRange(){
     return;
   }
 
-  for(size_t addr = addrStart; addr < addrEnd; addr++){
+  for(size_t addr = addrStart; addr <= addrEnd; addr++){
     byte out[busByteSize];
 
     if(!readAndValidate(addr,out)){

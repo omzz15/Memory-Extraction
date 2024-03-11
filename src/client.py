@@ -4,6 +4,11 @@ PORT = "/dev/ttyACM0"
 BAUD = 115200
 
 def verify_cmd_success() -> bool:
+    """
+    Used to verify the exit code is good after sending a command. Else it will print the error code.
+    
+    Returns true is command was successful and false otherwise.
+    """
     res = con.read()
     if(res[0] != 0x00): # success
         print(f"Error: Device responded with unsuccesful exit code: {res}")
@@ -12,9 +17,19 @@ def verify_cmd_success() -> bool:
     return True
 
 def send_addr(addr: int) -> None:
+    """
+    Handles converting the decimal address to bytes and sending it to the microcontroller.
+    
+    You should not need to use this command as read_range and read handle this for you.
+    """
     con.write(int.to_bytes(addr, length=ADDR_BYTE_SIZE, byteorder='little'))
 
 def read_range(start: int, end: int) -> bytes:
+    """
+    Reads a range of addresses from start (inclusive) to end (inclusive).
+
+    Returns a byte array of the data or None if the read failed.
+    """
     if(start > end):
         print("Error: start address is more than end so no range to read")
         return None
@@ -32,26 +47,29 @@ def read_range(start: int, end: int) -> bytes:
     if(not verify_cmd_success()):
         return None
     
-    data = con.read((end-start)*BUS_BYTE_SIZE)
-    if(len(data) != (end-start)*BUS_BYTE_SIZE):
+    data = con.read((end-start + 1)*BUS_BYTE_SIZE)
+    if(len(data) != (end-start + 1)*BUS_BYTE_SIZE):
         print("Error: incorrect amount of data recived from read range")
         return None
     return data
 
 def read(addr: int) -> bytes:
+    """
+    Reads a single address and returns a byte array of the data or None if the read failed.
+    """
     if(addr > MAX_ADDR):
         print("Error: address is more than max address.")
-        return
+        return None
     
     con.write(int.to_bytes(1))
     send_addr(addr)
 
     if(not verify_cmd_success()):
-        return
+        return None
     
     data = con.read(BUS_BYTE_SIZE)
     if(len(data) != BUS_BYTE_SIZE):
-        print("Error: incorrect amount of data recived from read range")
+        print("Error: incorrect amount of data recived from read")
         return None
     
     return data
@@ -71,16 +89,12 @@ if(not verify_cmd_success()):
    exit(1)
     
 data = con.read(5)
-if(data[0] != 0x10):
+if(data[0] != 0x10): # magic verification number
     print("Error: did not recive valid data")
     exit(1)
 
-con.write(0xffffff.to_bytes(3))
-print(con.read())
-print(con.read(3))
-
 ADDR_SIZE = data[1]
-MAX_ADDR = 2**ADDR_SIZE
+MAX_ADDR = 2**ADDR_SIZE - 1
 BUS_SIZE = data[2]
 ADDR_BYTE_SIZE = data[3]
 BUS_BYTE_SIZE = data[4]
